@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -10,6 +12,7 @@ using TMPro;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.XR.Interaction.Toolkit.Inputs.Readers;
 
 public class BlenderServer : MonoBehaviour
 {
@@ -17,9 +20,13 @@ public class BlenderServer : MonoBehaviour
 
     [SerializeField] Material material;
 
+    [SerializeField] List<FloatValue> floatValues;
+
     private GameObject waveformObj;
 
-    int logNum = 0;
+    private int logNum = 0;
+
+    private bool initialUpdate = true;
 
     void Start()
     {
@@ -32,36 +39,71 @@ public class BlenderServer : MonoBehaviour
         StartCoroutine(GetRequest("http://192.168.1.135:8000"));
     }
 
+    private string GeneratePostData()
+    {
+        List<string> rows = new List<string>();
+        foreach (FloatValue floatValue in floatValues)
+        {
+            rows.Add("\"" + floatValue.name + "\": " + floatValue.GetValue());
+        }
+
+        string output = "{" + string.Join(", ", rows) + "}";
+
+        Debug.Log(output);
+
+        return output;
+    }
+
+    private bool ValueModified()
+    {
+        bool valueModified = false;
+        foreach (FloatValue floatValue in floatValues)
+        {
+            if (floatValue.GetValueModified())
+            {
+                floatValue.SetValueModified(false);
+                valueModified = true;
+            }
+        }
+        return valueModified;
+    }
+
     private IEnumerator GetRequest(string uri)
     {
         while (true)
         {
-            using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
+            if (ValueModified() || initialUpdate)
             {
-                Log("Coroutine entered");
+                Debug.Log("UPDATING GEOMETRY");
+                initialUpdate = false;
 
-                yield return webRequest.SendWebRequest();
-
-                Log("Web request sent");
-
-                switch (webRequest.result)
+                using (UnityWebRequest webRequest = UnityWebRequest.Post(uri, GeneratePostData(), "application/json"))
                 {
-                    case UnityWebRequest.Result.ConnectionError:
-                        Log("Connection Error: " + webRequest.error);
-                        break;
-                    case UnityWebRequest.Result.DataProcessingError:
-                        Log("Error: " + webRequest.error);
-                        break;
-                    case UnityWebRequest.Result.ProtocolError:
-                        Log("HTTP Error: " + webRequest.error);
-                        break;
-                    case UnityWebRequest.Result.Success:
-                        Log("Mesh received");
-                        UpdateMesh(webRequest.downloadHandler.text);
-                        break;
+                    Log("Coroutine entered");
+
+                    yield return webRequest.SendWebRequest();
+
+                    Log("Web request sent");
+
+                    switch (webRequest.result)
+                    {
+                        case UnityWebRequest.Result.ConnectionError:
+                            Log("Connection Error: " + webRequest.error);
+                            break;
+                        case UnityWebRequest.Result.DataProcessingError:
+                            Log("Error: " + webRequest.error);
+                            break;
+                        case UnityWebRequest.Result.ProtocolError:
+                            Log("HTTP Error: " + webRequest.error);
+                            break;
+                        case UnityWebRequest.Result.Success:
+                            Log("Mesh received");
+                            UpdateMesh(webRequest.downloadHandler.text);
+                            break;
+                    }
                 }
             }
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSeconds(0.01f);
         }
     }
 
@@ -88,6 +130,7 @@ public class BlenderServer : MonoBehaviour
             }
 
             waveformObj = new OBJLoader().Load(objStream, mtlStream);
+            waveformObj.transform.position = transform.position;
             //waveformObj.GetNamedChild("Cube").GetComponent<MeshRenderer>().material = material;
         }
         catch (Exception e)
@@ -111,6 +154,6 @@ public class BlenderServer : MonoBehaviour
 
     void Update()
     {
-        
+
     }
 }
