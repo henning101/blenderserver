@@ -22,6 +22,8 @@ public class BlenderServer : MonoBehaviour
 
     [SerializeField] List<FloatValue> floatValues;
 
+    [SerializeField] private string url;
+
     private GameObject waveformObj;
 
     private int logNum = 0;
@@ -36,7 +38,7 @@ public class BlenderServer : MonoBehaviour
         {
             Log(ip.ToString());
         }
-        StartCoroutine(GetRequest("http://192.168.1.135:8000"));
+        StartCoroutine(GetRequest(url));
     }
 
     private string GeneratePostData()
