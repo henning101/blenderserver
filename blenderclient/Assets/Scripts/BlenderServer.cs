@@ -12,7 +12,9 @@ using TMPro;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Inputs.Readers;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 public class BlenderServer : MonoBehaviour
 {
@@ -23,6 +25,10 @@ public class BlenderServer : MonoBehaviour
     [SerializeField] List<FloatValue> floatValues;
 
     [SerializeField] private string url;
+
+    [SerializeField] private TeleportationArea teleportationArea;
+
+    [SerializeField] private InteractionLayerMask interactionLayers;
 
     private GameObject waveformObj;
 
@@ -126,20 +132,33 @@ public class BlenderServer : MonoBehaviour
             byte[] mtlByteArray = Encoding.UTF8.GetBytes(mtl);
             MemoryStream mtlStream = new MemoryStream(mtlByteArray);
 
-            if (waveformObj)
-            {
-                Destroy(waveformObj);
-            }
-
-            waveformObj = new OBJLoader().Load(objStream, mtlStream);
-            waveformObj.transform.position = transform.position;
-            //waveformObj.GetNamedChild("Cube").GetComponent<MeshRenderer>().material = material;
+            DestroyWaveformObj();
+            CreateWaveformObj(objStream, mtlStream);
         }
         catch (Exception e)
         {
             Log(e.ToString());
         }
+    }
 
+    private void CreateWaveformObj(MemoryStream objStream, MemoryStream mtlStream)
+    {
+        waveformObj = new OBJLoader().Load(objStream, mtlStream);
+        GameObject targetGeometry = waveformObj.GetNamedChild("TargetGeometry");
+        MeshCollider targetCollider = targetGeometry.AddComponent<MeshCollider>();
+        waveformObj.transform.position = transform.position;        
+        targetCollider.sharedMesh = targetGeometry.GetComponent<MeshFilter>().sharedMesh;
+        targetCollider.convex = false;
+        TeleportationArea area = waveformObj.AddComponent<TeleportationArea>();
+        area.interactionLayers = interactionLayers;
+    }
+
+    private void DestroyWaveformObj()
+    {
+        if (waveformObj)
+        {
+            Destroy(waveformObj);
+        }
     }
 
     private void Log(string text)
