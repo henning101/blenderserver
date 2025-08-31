@@ -15,6 +15,5 @@ def run_blender():
     fmat = open('./blenderserver.mtl')
     return fobj.read() + '#####' + fmat.read()
 
-
     #print(result.stdout)
     #return result.stdout

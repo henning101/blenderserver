@@ -14,7 +14,7 @@ public class Pen2d : MonoBehaviour, IPointerDownHandler, IPointerMoveHandler, IP
 
     [SerializeField] private Camera camera;
 
-    [SerializeField] private TextMeshProUGUI positionText;
+    //[SerializeField] private TextMeshProUGUI positionText;
 
     private bool drawing;
 
@@ -32,10 +32,10 @@ public class Pen2d : MonoBehaviour, IPointerDownHandler, IPointerMoveHandler, IP
             camera,
             out localPoint
         );
-        localPoint += new Vector2(320 / 2, 320 / 2);
-        localPoint *= 512.0f / 320.0f;
+        localPoint += new Vector2(200 / 2, 200 / 2);
+        localPoint *= 512.0f / 200.0f;
 
-        positionText.text = localPoint.ToString();
+        //positionText.text = localPoint.ToString();
 
         if (drawing)
         {

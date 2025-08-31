@@ -18,7 +18,7 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 public class BlenderServer : MonoBehaviour
 {
-    [SerializeField] TextMeshPro text;
+    [SerializeField] TextMeshProUGUI text;
 
     [SerializeField] Material material;
 
@@ -30,9 +30,13 @@ public class BlenderServer : MonoBehaviour
 
     [SerializeField] private InteractionLayerMask interactionLayers;
 
-    private GameObject waveformObj;
+    [SerializeField] private List<string> logs = new List<string>();
 
-    private int logNum = 0;
+    [SerializeField] private FloatValue rotationX;
+    [SerializeField] private FloatValue rotationY;
+    [SerializeField] private FloatValue rotationZ;
+
+    private GameObject waveformObj;
 
     private bool initialUpdate = true;
 
@@ -44,7 +48,7 @@ public class BlenderServer : MonoBehaviour
         {
             Log(ip.ToString());
         }
-        StartCoroutine(GetRequest(url));
+        StartCoroutine(GetRequest());
     }
 
     private string GeneratePostData()
@@ -76,22 +80,18 @@ public class BlenderServer : MonoBehaviour
         return valueModified;
     }
 
-    private IEnumerator GetRequest(string uri)
+    private IEnumerator GetRequest()
     {
         while (true)
         {
             if (ValueModified() || initialUpdate)
             {
-                Debug.Log("UPDATING GEOMETRY");
+                Log($"Mesh update requested from {url} ({DateTime.Now})");
                 initialUpdate = false;
 
-                using (UnityWebRequest webRequest = UnityWebRequest.Post(uri, GeneratePostData(), "application/json"))
+                using (UnityWebRequest webRequest = UnityWebRequest.Post(url, GeneratePostData(), "application/json"))
                 {
-                    Log("Coroutine entered");
-
                     yield return webRequest.SendWebRequest();
-
-                    Log("Web request sent");
 
                     switch (webRequest.result)
                     {
@@ -105,13 +105,13 @@ public class BlenderServer : MonoBehaviour
                             Log("HTTP Error: " + webRequest.error);
                             break;
                         case UnityWebRequest.Result.Success:
-                            Log("Mesh received");
+                            Log($"Mesh received from {url} ({DateTime.Now})");
                             UpdateMesh(webRequest.downloadHandler.text);
                             break;
                     }
                 }
             }
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(1f);
         }
     }
 
@@ -144,13 +144,27 @@ public class BlenderServer : MonoBehaviour
     private void CreateWaveformObj(MemoryStream objStream, MemoryStream mtlStream)
     {
         waveformObj = new OBJLoader().Load(objStream, mtlStream);
-        GameObject targetGeometry = waveformObj.GetNamedChild("TargetGeometry");
-        MeshCollider targetCollider = targetGeometry.AddComponent<MeshCollider>();
-        waveformObj.transform.position = transform.position;        
-        targetCollider.sharedMesh = targetGeometry.GetComponent<MeshFilter>().sharedMesh;
-        targetCollider.convex = false;
+        //GameObject targetGeometry = waveformObj.GetNamedChild("TargetGeometry");
+        //targetGeometry.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+        foreach (Transform child in waveformObj.transform)
+        {
+            GameObject childGo = child.gameObject;
+            childGo.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            MeshCollider targetCollider = childGo.AddComponent<MeshCollider>();
+            waveformObj.transform.position = transform.position;
+            targetCollider.sharedMesh = childGo.GetComponent<MeshFilter>().sharedMesh;
+            targetCollider.convex = false;
+        }
+
         TeleportationArea area = waveformObj.AddComponent<TeleportationArea>();
         area.interactionLayers = interactionLayers;
+
+        BlenderObject bo = waveformObj.AddComponent<BlenderObject>();
+        bo.rotationX = rotationX;
+        bo.rotationY = rotationY;
+        bo.rotationZ = rotationZ;
     }
 
     private void DestroyWaveformObj()
@@ -163,14 +177,13 @@ public class BlenderServer : MonoBehaviour
 
     private void Log(string text)
     {
-        this.text.text = this.text.text + "\n" + text;
-        logNum++;
+        logs.Add(text);
 
-        if (logNum > 30)
+        if (logs.Count > 5)
         {
-            logNum = 0;
-            this.text.text = "";
+            logs.RemoveAt(0);
         }
+        this.text.text = string.Join('\n', logs);
     }
 
     void Update()
