@@ -6,6 +6,10 @@
 * Unity Hub: https://unity.com/download
 * Unity 6.0 (6000.0.54f1, install using Unity Hub): https://unity.com/releases/editor/whats-new/6000.0.54f1
 
+## Meta Quest Setup
+* Create a Meta developer account
+* Download Meta Developer Hub: https://developers.meta.com/horizon/develop
+
 ## Blender Server Setup (ask for guidance from the tutor)
 * Install Git on your computer
 * Clone this repository
